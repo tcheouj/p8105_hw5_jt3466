@@ -1,0 +1,325 @@
+---
+title: "p8105_hw5_jt3466"
+author: "Johnstone Tcheou"
+date: "2024-11-05"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Question 1
+
+```{r q1}
+
+bday_sim <- function(n) {
+  
+  bdays <- sample(1:365, size = n, replace = TRUE)
+  
+  duplicate = length(unique(bdays)) < n
+  
+  return(duplicate)
+  
+}
+
+bday_2_50 <- 
+  expand_grid(
+    n = 2:50,
+    iter = 1:10000
+  ) |> 
+  mutate(
+    res = map_lgl(n, bday_sim) 
+  ) |> 
+  group_by(n) |> 
+  summarize(prob = mean(res))
+
+bday_2_50 |> 
+  ggplot(aes(x = n, y = prob)) + 
+  geom_line()
+
+```
+Based on the graph, we see that the probability of having at least 2 people with the same birthday is approximately logarithmic. Around a group size of 23, the probability of having 2 or more with the same birthday is around 50%, which gradually increases until plateauing near 100% with around 50 people in the group. The slope of probability per group size appears to be the highest from a group size of 10 to 30.  
+
+# Question 2
+
+```{r q2 data simulation }
+
+pop_size <- 30
+pop_sd <- 5
+alpha <- 0.05
+
+# rnorm(mean = 0, n = pop_size, sd = pop_sd) |> 
+#   t.test(mu = 0, alternative = "two.sided")
+# 
+# test <-
+#   expand_grid(
+#     i = 5,
+#     pop_mean = c(0:6)
+#   ) |> 
+#   mutate(
+#     data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
+#     ttest = map2(data, pop_mean, \(x, y) t.test(x = x, mu = y, alternative = "two.sided")),
+#     results = map(ttest, broom::tidy)
+#   ) |> 
+#   unnest(cols = results)
+
+# test_sim_data <- 
+#   expand_grid(
+#     i = 1:5000,
+#     pop_mean = c(0:6)
+#   ) |>
+#   mutate(
+#     data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
+#     ttest = map2(data, pop_mean, \(x, y) t.test(x = x, mu = y, alternative = "two.sided")),
+#     results = map(ttest, broom::tidy)
+#   ) |> 
+#   unnest(cols = results) 
+
+sim_data <- 
+  expand_grid(
+    i = 1:5000,
+    pop_mean = c(0:6)
+  ) |>
+  mutate(
+    data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
+    ttest = map(data, \(x) t.test(x = x, mu = 0, alternative = "two.sided")),
+    results = map(ttest, broom::tidy)
+  ) |> 
+  unnest(cols = results) 
+  
+# sim_res_data <- 
+#   sim_data |> 
+#   select(pop_mean, estimate, p.value) |> 
+#   rename(estimated_mean = estimate) |> 
+#   arrange(pop_mean) |> 
+#   group_by(pop_mean) |> 
+#   mutate(
+#     significant = case_when(
+#       p.value < 0.05 ~ 1,
+#       p.value > 0.05 ~ 0,
+#       .default = NA
+#     ), 
+#     prptn_sig = mean(significant)
+#   ) 
+# 
+# sim_res_data |> 
+#   ggplot(aes(x = pop_mean, y = prptn_sig)) + 
+#   geom_line()
+
+# sim_data <-
+#   expand_grid(
+#     i = 1:5000,
+#     pop_mean = c(0:6)
+#   ) |>
+#   mutate(
+#     data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
+#     ttest = map2(data, pop_mean, \(x, y) t.test(x = x, mu = y, alternative = "two.sided")),
+#     results = map(ttest, broom::tidy)
+#   ) |> 
+#   unnest(cols = results) 
+# 
+# # sim_data |> 
+# #   mutate(
+# #     mean = map_dbl(data, mean),
+# #     sd = map_dbl(data, sd)
+# #   ) |> 
+# #   select(mean, pop_mean, estimate, sd, everything())
+# 
+#   
+# sim_res_data <- 
+#   sim_data |> 
+#   select(pop_mean, estimate, p.value) |> 
+#   rename(estimated_mean = estimate) |> 
+#   arrange(pop_mean) |> 
+#   group_by(pop_mean) |> 
+#   mutate(
+#     significant = case_when(
+#       p.value < 0.05 ~ 1,
+#       p.value > 0.05 ~ 0,
+#       .default = NA
+#     ), 
+#     prptn_sig = mean(significant)
+#   ) 
+# 
+# sim_res_data |> 
+#   ggplot(aes(x = pop_mean, y = prptn_sig)) + 
+#   geom_line()
+
+```
+
+```{r mu vs proportion significant}
+sim_res_data <- 
+  sim_data |> 
+  select(pop_mean, estimate, p.value) |> 
+  rename(estimated_mean = estimate) |> 
+  arrange(pop_mean) |> 
+  group_by(pop_mean) |> 
+  mutate(
+    significant = case_when(
+      p.value < 0.05 ~ 1,
+      p.value > 0.05 ~ 0,
+      .default = NA
+    ), 
+    prptn_sig = mean(significant)
+  ) 
+
+sim_res_data |> 
+  ggplot(aes(x = pop_mean, y = prptn_sig)) + 
+  geom_line() +
+  labs(
+      x = "True population mean (mu)",
+      y = "Proportion of significantly different estimated means \n(power of test)"
+    ) 
+```
+
+Based on the graph, we see that as population mean increases, the proportion of tests that are significant increases. It the greatest increase in proportion significant is between 1 to 3, where it starts to taper off and plateau close to 100% by a population mean of 4.
+
+As such, this indicates that as population mean increases, it is getting further from the mu we are testing of 0, so effect size is increasing, and the power to detect a significant difference increases as the effect size increases. 
+
+```{r q2 avg estimated mu vs true}
+avg_mu_hats <-
+  sim_res_data |> 
+  group_by(pop_mean) |> 
+  mutate(
+    avg_estimated_mean = mean(estimated_mean) 
+  )
+
+sig_avg_mu_hats <- 
+  sim_res_data |> 
+  filter(significant == 1) |> 
+  group_by(pop_mean) |> 
+  mutate(
+    avg_estimated_mean = mean(estimated_mean) 
+  )
+
+avg_mu_hats |> 
+  filter(pop_mean == 1) |> 
+  summarize(est_mean = mean(estimated_mean)) |> 
+  pull(est_mean)
+
+sig_avg_mu_hats |> 
+  filter(pop_mean == 1) |> 
+  summarize(est_mean = mean(estimated_mean)) |> 
+  pull(est_mean)
+
+avg_mu_hats |> 
+  ggplot(aes(x = pop_mean, y = estimated_mean)) +
+  geom_point() + 
+  geom_line(aes(x = pop_mean, y = avg_estimated_mean)) + 
+  geom_point(data = sig_avg_mu_hats, 
+             aes(x = pop_mean, y = estimated_mean, color = "red"),
+             alpha = 0.25) + 
+  geom_line(data = sig_avg_mu_hats, 
+            aes(x = pop_mean, y = avg_estimated_mean, color = "red"), 
+            linetype = "dashed") + 
+  scale_y_continuous(
+    breaks = seq(-3, 10, by = 1)
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 6, by = 1)
+  ) +
+  labs(
+      x = "True population mean (mu)",
+      y = "Average of estimated means (average of mu hat)"
+    ) +
+  guides(
+    color = "none"
+  )
+```
+
+The plot shows that as the true population mean increases, the average estimated mean also increases. The black points are all the estimated means for a given population mean, while the red points are the estimated means with a significant difference from the population mean. This is in line with the last graph, where a larger proportion of points are significant as the true population mean is higher (indicating larger effect size with increasing true population mean)
+
+As expected, the average estimated mean for all estimates of the same population mean is approximately the population mean. However, for the sample average estimated means for estimates significantly different from the null, the trend is largely similar except when the population mean is 1 and to a lesser extent, 2. When the population mean is 1, the average estimated mean among significant estimates is `r sig_avg_mu_hats |> filter(pop_mean == 1) |> summarize(est_mean = mean(estimated_mean)) |> pull(est_mean)` instead of 1. When the population mean is 2, the average estimated mean among significant estimates is `r sig_avg_mu_hats |>  filter(pop_mean == 1) |> summarize(est_mean = mean(estimated_mean)) |> pull(est_mean)`.
+
+# Question 3
+
+```{r q3 data import}
+
+wp_data <- 
+  read_csv(
+    file = "https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv"
+  ) 
+
+summary(wp_data)
+
+```
+The raw dataset is `r nrow(wp_data)` observations long and `r ncol(wp_data)` variables wide for `r wp_data |> pull(city, state) |> unique() |> length()` different cities. The key variables include `victim_first` and `victim_last` to provide the victim's name, as well as victim demographic info like `victim_age`, `victim_sex`, and `victim_race`, as well as the `city` and `state` (with longitudinal data) and the `reported_date` of the homicide. The `reported_date` variable was imported as a numeric type, not as a library type, and there is an observation with a date of `r wp_data |> pull(reported_date) |> max()`, which is not sensical. 
+
+```{r q3 data cleaning}
+wp_data <- 
+  read_csv(
+    file = "https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv"
+  ) |> 
+  mutate(
+    reported_date = case_match(
+      reported_date,
+      201511105 ~ 20151105,
+      201511018 ~ 20151018,
+      .default = reported_date
+    ),
+    reported_date = ymd(reported_date),
+    city_state = paste(city, state, sep = ", ")
+  )
+```
+After changing that observation, there is another date with `201511018`, so it appears these all have an extra 1 before the month. These two observations are changed accordingly. Now that all `reported_date`s are in the format `yyyymmdd`, the `ymd` function from the `lubridate` package is used to convert these to dates. A variable `city_state` is created from concatenating the `city` and `state` variables. The variable names are already tidy, so `clean_names` from the `janitor` package is not needed.
+
+```{r q3 homicides by city}
+wp_prop <-
+  wp_data |> 
+  group_by(city_state) |> 
+  summarize(total_homicides = n(),
+            open_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))) |> 
+  mutate(
+    prop_unsolved = open_homicides/total_homicides
+  )
+
+wp_prop
+```
+
+```{r q3 baltimore}
+baltimore_prop <- 
+  wp_prop |> 
+  filter(city_state == "Baltimore, MD") |> 
+  mutate(
+    prop_test = map(open_homicides, prop.test, n = total_homicides),
+    prop_test_tidy = map(prop_test, broom::tidy)
+  ) |> 
+  select(prop_test_tidy) |> 
+  unnest(prop_test_tidy) |> 
+  select(estimate, starts_with("conf"))
+
+baltimore_prop
+
+```
+
+```{r q3 all cities}
+wp_prop |> 
+  mutate(
+    prop_test = map2(open_homicides, total_homicides, prop.test),
+    prop_test_tidy = map(prop_test, broom::tidy)
+  ) |> 
+  unnest(prop_test_tidy) |> 
+  select(city_state, estimate, starts_with("conf")) |> 
+  arrange(desc(estimate)) |> 
+  mutate(
+    city_state = fct_reorder(city_state, estimate)
+  ) |> 
+  ggplot(aes(x = city_state, y = estimate, fill = city_state)) +
+    geom_col() + 
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) + 
+    viridis::scale_fill_viridis(discrete = TRUE) +
+    labs(
+      x = "City, state",
+      y = "Estimated proportion of unsolved homicides"
+    ) +
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.5) 
+    ) +
+    guides(
+      fill = "none"
+    )
+```
+
+There is a super wide CI for Tulsa, AL, which makes sense given that there was `r wp_prop |> filter(city_state == "Tulsa, AL") |> pull(total_homicides)` total homicide and it was a closed case, leading to low confidence for the estimated proportion and a wide CI.  
