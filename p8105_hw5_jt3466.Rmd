@@ -50,33 +50,6 @@ pop_size <- 30
 pop_sd <- 5
 alpha <- 0.05
 
-# rnorm(mean = 0, n = pop_size, sd = pop_sd) |> 
-#   t.test(mu = 0, alternative = "two.sided")
-# 
-# test <-
-#   expand_grid(
-#     i = 5,
-#     pop_mean = c(0:6)
-#   ) |> 
-#   mutate(
-#     data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
-#     ttest = map2(data, pop_mean, \(x, y) t.test(x = x, mu = y, alternative = "two.sided")),
-#     results = map(ttest, broom::tidy)
-#   ) |> 
-#   unnest(cols = results)
-
-# test_sim_data <- 
-#   expand_grid(
-#     i = 1:5000,
-#     pop_mean = c(0:6)
-#   ) |>
-#   mutate(
-#     data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
-#     ttest = map2(data, pop_mean, \(x, y) t.test(x = x, mu = y, alternative = "two.sided")),
-#     results = map(ttest, broom::tidy)
-#   ) |> 
-#   unnest(cols = results) 
-
 sim_data <- 
   expand_grid(
     i = 1:5000,
@@ -88,75 +61,6 @@ sim_data <-
     results = map(ttest, broom::tidy)
   ) |> 
   unnest(cols = results) 
-  
-# sim_data |> 
-#   filter(p.value < 0.05) |> 
-#   mutate(
-#     abs_statistic = abs(statistic)
-#   ) |> 
-#   select(pop_mean, abs_statistic) |> 
-#   group_by(pop_mean) |> 
-#   summarize(
-#     mean_abs_stat = mean(abs_statistic)
-#   )
-
-# sim_res_data <- 
-#   sim_data |> 
-#   select(pop_mean, estimate, p.value) |> 
-#   rename(estimated_mean = estimate) |> 
-#   arrange(pop_mean) |> 
-#   group_by(pop_mean) |> 
-#   mutate(
-#     significant = case_when(
-#       p.value < 0.05 ~ 1,
-#       p.value > 0.05 ~ 0,
-#       .default = NA
-#     ), 
-#     prptn_sig = mean(significant)
-#   ) 
-# 
-# sim_res_data |> 
-#   ggplot(aes(x = pop_mean, y = prptn_sig)) + 
-#   geom_line()
-
-# sim_data <-
-#   expand_grid(
-#     i = 1:5000,
-#     pop_mean = c(0:6)
-#   ) |>
-#   mutate(
-#     data = map(pop_mean, \(x) rnorm(n = pop_size, mean = x, sd = pop_sd)),
-#     ttest = map2(data, pop_mean, \(x, y) t.test(x = x, mu = y, alternative = "two.sided")),
-#     results = map(ttest, broom::tidy)
-#   ) |> 
-#   unnest(cols = results) 
-# 
-# # sim_data |> 
-# #   mutate(
-# #     mean = map_dbl(data, mean),
-# #     sd = map_dbl(data, sd)
-# #   ) |> 
-# #   select(mean, pop_mean, estimate, sd, everything())
-# 
-#   
-# sim_res_data <- 
-#   sim_data |> 
-#   select(pop_mean, estimate, p.value) |> 
-#   rename(estimated_mean = estimate) |> 
-#   arrange(pop_mean) |> 
-#   group_by(pop_mean) |> 
-#   mutate(
-#     significant = case_when(
-#       p.value < 0.05 ~ 1,
-#       p.value > 0.05 ~ 0,
-#       .default = NA
-#     ), 
-#     prptn_sig = mean(significant)
-#   ) 
-# 
-# sim_res_data |> 
-#   ggplot(aes(x = pop_mean, y = prptn_sig)) + 
-#   geom_line()
 
 ```
 
@@ -206,16 +110,6 @@ sig_avg_mu_hats <-
     avg_estimated_mean = mean(estimated_mean) 
   )
 
-# avg_mu_hats |> 
-#   filter(pop_mean == 1) |> 
-#   summarize(est_mean = mean(estimated_mean)) |> 
-#   pull(est_mean)
-# 
-# sig_avg_mu_hats |> 
-#   filter(pop_mean == 1) |> 
-#   summarize(est_mean = mean(estimated_mean)) |> 
-#   pull(est_mean)
-
 avg_mu_hats |> 
   ggplot(aes(x = pop_mean, y = estimated_mean)) +
   geom_point() + 
@@ -247,7 +141,7 @@ As expected, the average estimated mean for all estimates of the same population
 
 This somewhat makes sense given that when mu = 1, the lowest of the significantly different estimated means is still above mu itself (the black line), whereas that effect of the red points being above the black line decreases as mu increases. And for mu = 0, there is an approximately even distribution of significant points above and below mu, which is why the average estimated means is around mu = 0, as the two sides balance out. 
 
-```{r}
+```{r distribution of estimated means by mu}
 sig_avg_mu_hats |> 
   mutate(
     pop_mean = factor(pop_mean)
@@ -277,6 +171,7 @@ wp_data <-
 summary(wp_data)
 
 ```
+
 The raw dataset is `r nrow(wp_data)` observations long and `r ncol(wp_data)` variables wide for `r wp_data |> pull(city, state) |> unique() |> length()` different cities. The key variables include `victim_first` and `victim_last` to provide the victim's name, as well as victim demographic info like `victim_age`, `victim_sex`, and `victim_race`, as well as the `city` and `state` (with longitudinal data) and the `reported_date` of the homicide. The `reported_date` variable was imported as a numeric type, not as a library type, and there is an observation with a date of `r wp_data |> pull(reported_date) |> max()`, which is not sensical. 
 
 ```{r q3 data cleaning}
@@ -298,6 +193,7 @@ wp_data <-
 After changing that observation, there is another date with `201511018`, so it appears these all have an extra 1 before the month. These two observations are changed accordingly. Now that all `reported_date`s are in the format `yyyymmdd`, the `ymd` function from the `lubridate` package is used to convert these to dates. A variable `city_state` is created from concatenating the `city` and `state` variables. The variable names are already tidy, so `clean_names` from the `janitor` package is not needed.
 
 ```{r q3 homicides by city}
+
 wp_prop <-
   wp_data |> 
   group_by(city_state) |> 
@@ -305,10 +201,15 @@ wp_prop <-
             open_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))) |> 
   mutate(
     prop_unsolved = open_homicides/total_homicides
-  )
+  ) 
 
-wp_prop
+wp_prop |> 
+  arrange(desc(total_homicides)) |> 
+  knitr::kable(digits = 3)
+
 ```
+
+I was a little surprised at how low the homicide count was for NYC, with how population dense a city it is. It also had a relatively low proportion unsolved compared to other cities. Chicago had a large number of total homicides, and a large proportion of it unsolved. I wonder if that is because of the sheer number of homicides, but Philadelphia with the next closest total homicides had a comparatively much lower proportion of unsolved homicides.
 
 ```{r q3 baltimore}
 baltimore_prop <- 
@@ -322,8 +223,8 @@ baltimore_prop <-
   unnest(prop_test_tidy) |> 
   select(estimate, starts_with("conf"))
 
-baltimore_prop
-
+baltimore_prop |> 
+  knitr::kable(digits = 3)
 ```
 
 ```{r q3 all cities}
@@ -354,4 +255,4 @@ wp_prop |>
     )
 ```
 
-There is a super wide CI for Tulsa, AL, which makes sense given that there was `r wp_prop |> filter(city_state == "Tulsa, AL") |> pull(total_homicides)` total homicide and it was a closed case, leading to low confidence for the estimated proportion and a wide CI.  
+As alluded to earlier, Chicago not only has the most total homicides but also the highest proportion of unsolved homicides by a solid margin. The next highest two are Baltimore and New Orleans, which both rank relatively high for total homicides. CIs are pretty narrow for the most part, especially for Chicago. However, there is a super wide CI for Tulsa, AL, which makes sense given that there was `r wp_prop |> filter(city_state == "Tulsa, AL") |> pull(total_homicides)` total homicide and it was a closed case, leading to low confidence for the estimated proportion and a wide CI.  
