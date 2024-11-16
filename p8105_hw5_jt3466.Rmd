@@ -89,6 +89,17 @@ sim_data <-
   ) |> 
   unnest(cols = results) 
   
+# sim_data |> 
+#   filter(p.value < 0.05) |> 
+#   mutate(
+#     abs_statistic = abs(statistic)
+#   ) |> 
+#   select(pop_mean, abs_statistic) |> 
+#   group_by(pop_mean) |> 
+#   summarize(
+#     mean_abs_stat = mean(abs_statistic)
+#   )
+
 # sim_res_data <- 
 #   sim_data |> 
 #   select(pop_mean, estimate, p.value) |> 
@@ -150,6 +161,7 @@ sim_data <-
 ```
 
 ```{r mu vs proportion significant}
+
 sim_res_data <- 
   sim_data |> 
   select(pop_mean, estimate, p.value) |> 
@@ -194,15 +206,15 @@ sig_avg_mu_hats <-
     avg_estimated_mean = mean(estimated_mean) 
   )
 
-avg_mu_hats |> 
-  filter(pop_mean == 1) |> 
-  summarize(est_mean = mean(estimated_mean)) |> 
-  pull(est_mean)
-
-sig_avg_mu_hats |> 
-  filter(pop_mean == 1) |> 
-  summarize(est_mean = mean(estimated_mean)) |> 
-  pull(est_mean)
+# avg_mu_hats |> 
+#   filter(pop_mean == 1) |> 
+#   summarize(est_mean = mean(estimated_mean)) |> 
+#   pull(est_mean)
+# 
+# sig_avg_mu_hats |> 
+#   filter(pop_mean == 1) |> 
+#   summarize(est_mean = mean(estimated_mean)) |> 
+#   pull(est_mean)
 
 avg_mu_hats |> 
   ggplot(aes(x = pop_mean, y = estimated_mean)) +
@@ -231,7 +243,27 @@ avg_mu_hats |>
 
 The plot shows that as the true population mean increases, the average estimated mean also increases. The black points are all the estimated means for a given population mean, while the red points are the estimated means with a significant difference from the population mean. This is in line with the last graph, where a larger proportion of points are significant as the true population mean is higher (indicating larger effect size with increasing true population mean)
 
-As expected, the average estimated mean for all estimates of the same population mean is approximately the population mean. However, for the sample average estimated means for estimates significantly different from the null, the trend is largely similar except when the population mean is 1 and to a lesser extent, 2. When the population mean is 1, the average estimated mean among significant estimates is `r sig_avg_mu_hats |> filter(pop_mean == 1) |> summarize(est_mean = mean(estimated_mean)) |> pull(est_mean)` instead of 1. When the population mean is 2, the average estimated mean among significant estimates is `r sig_avg_mu_hats |>  filter(pop_mean == 1) |> summarize(est_mean = mean(estimated_mean)) |> pull(est_mean)`.
+As expected, the average estimated mean for all estimates of the same population mean is approximately the population mean. However, for the sample average estimated means for estimates significantly different from the null, the trend is largely similar except when the population mean is 1 and to a lesser extent, 2. When the population mean is 1, the average estimated mean among significant estimates is `r sig_avg_mu_hats |> filter(pop_mean == 1) |> summarize(est_mean = mean(estimated_mean)) |> pull(est_mean)` instead of 1. When the population mean is 2, the average estimated mean among significant estimates is `r sig_avg_mu_hats |>  filter(pop_mean == 2) |> summarize(est_mean = mean(estimated_mean)) |> pull(est_mean)`. 
+
+This somewhat makes sense given that when mu = 1, the lowest of the significantly different estimated means is still above mu itself (the black line), whereas that effect of the red points being above the black line decreases as mu increases. And for mu = 0, there is an approximately even distribution of significant points above and below mu, which is why the average estimated means is around mu = 0, as the two sides balance out. 
+
+```{r}
+sig_avg_mu_hats |> 
+  mutate(
+    pop_mean = factor(pop_mean)
+  ) |> 
+  ggplot(aes(x = pop_mean, y = estimated_mean, fill = pop_mean)) +
+  geom_violin() +
+  stat_summary(fun = "mean") + 
+  scale_y_continuous(
+    breaks = seq(-3, 10, by = 1)
+  ) +
+  guides(
+    fill = "none"
+  )
+```
+
+This is reinforced when looking at the distribution of estimated means grouped by the population mean the sample came from. When mu is 1, the distribution appears to have a left tail with only a smattering of points in the negative, while the bulk of points are around 2 but bound by the standard deviation around mu to keep the maximum estimated mean around 4. 
 
 # Question 3
 
